@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>小说阅读器</title>
+    <style>
+        /* ========== 全局重置 & 基础 ========== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+            background-color: #ffffff;
+            color: #000000;
+            padding: 16px 20px 40px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 主容器 — 类似电子书阅读器，居中且最大宽度舒适 */
+        .app {
+            width: 100%;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        /* ========== 头部 ========== */
+        .header {
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .brand {
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: #222;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+        .brand small {
+            font-size: 14px;
+            font-weight: 400;
+            color: #999;
+            margin-left: 8px;
+        }
+
+        /* 控制行：章节 / 字体大小 */
+        .control-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 12px;
+            margin-bottom: 10px;
+        }
+        .control-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-label {
+            font-size: 15px;
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+            min-width: 48px;
+        }
+
+        .control-input {
+            width: 80px;
+            padding: 6px 10px;
+            font-size: 16px;
+            border: 1.5px solid #ccc;
+            border-radius: 6px;
+            background: #fff;
+            color: #222;
+            outline: none;
+            transition: border-color 0.2s;
+            height: 38px;
+            line-height: 1.4;
+            text-align: center;
+        }
+        .control-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+        /* 移动端避免输入框太小 */
+        @media (max-width: 480px) {
+            .control-input {
+                width: 72px;
+                font-size: 15px;
+                padding: 5px 8px;
+                height: 36px;
+            }
+        }
+
+        .control-btn {
+            padding: 6px 18px;
+            font-size: 15px;
+            font-weight: 500;
+            border: none;
+            border-radius: 6px;
+            background: #3b82f6;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+        .control-btn:hover {
+            background: #2563eb;
+        }
+        .control-btn:active {
+            transform: scale(0.96);
+        }
+        .control-btn.secondary {
+            background: #e5e7eb;
+            color: #333;
+        }
+        .control-btn.secondary:hover {
+            background: #d1d5db;
+        }
+
+        .control-unit {
+            font-size: 15px;
+            color: #666;
+            white-space: nowrap;
+        }
+
+        /* 窄屏换行优化 */
+        @media (max-width: 480px) {
+            .control-row {
+                gap: 6px 8px;
+            }
+            .control-label {
+                font-size: 14px;
+                min-width: 40px;
+            }
+            .control-btn {
+                padding: 5px 14px;
+                font-size: 14px;
+                height: 36px;
+            }
+        }
+
+        /* ========== 导航条 (上下共用) ========== */
+        .nav-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .nav-bar.top {
+            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 6px;
+        }
+        .nav-bar.bottom {
+            border-top: 1px solid #f0f0f0;
+            margin-top: 16px;
+            padding-top: 16px;
+        }
+
+        .nav-btn {
+            padding: 8px 24px;
+            font-size: 15px;
+            font-weight: 500;
+            border: 1.5px solid #d1d5db;
+            border-radius: 8px;
+            background: #f9fafb;
+            color: #1f2937;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+            min-width: 100px;
+            text-align: center;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        .nav-btn:hover:not(:disabled) {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+        }
+        .nav-btn:active:not(:disabled) {
+            transform: scale(0.97);
+        }
+        .nav-btn:disabled,
+        .nav-btn.hidden {
+            visibility: hidden;
+            pointer-events: none;
+            opacity: 0;
+        }
+        .nav-btn .arrow {
+            font-weight: 300;
+        }
+
+        .nav-spacer {
+            flex: 1;
+        }
+
+        /* 移动端导航按钮自适应 */
+        @media (max-width: 480px) {
+            .nav-btn {
+                padding: 8px 16px;
+                font-size: 14px;
+                min-width: 76px;
+            }
+        }
+        @media (max-width: 380px) {
+            .nav-btn {
+                padding: 6px 10px;
+                font-size: 13px;
+                min-width: 60px;
+            }
+        }
+
+        /* ========== 正文区域 ========== */
+        .reading-area {
+            padding: 4px 0 8px;
+            min-height: 320px;
+        }
+
+        .chapter-title {
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1.5;
+            text-align: center;
+            margin: 8px 0 18px 0;
+            padding: 0 4px;
+            color: #111;
+            word-break: break-word;
+        }
+        @media (max-width: 480px) {
+            .chapter-title {
+                font-size: 19px;
+                margin: 4px 0 14px 0;
+            }
+        }
+
+        .chapter-body {
+            font-size: 18px; /* 默认，由 JS 控制 */
+            line-height: 1.8; /* 默认行距 1.8 */
+            color: #000;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            overflow-x: hidden;
+            padding: 0 2px;
+            font-family: "PingFang SC", "Microsoft YaHei", "Noto Serif SC", serif;
+            letter-spacing: 0.02em;
+        }
+
+        /* 空状态 / 错误提示 */
+        .message {
+            padding: 40px 16px;
+            text-align: center;
+            font-size: 17px;
+            color: #666;
+            line-height: 1.8;
+        }
+        .message.error {
+            color: #b91c1c;
+            background: #fef2f2;
+            border-radius: 8px;
+            padding: 24px 16px;
+        }
+        .message .emoji {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 12px;
+        }
+
+        /* ========== 加载状态 ========== */
+        .loading {
+            text-align: center;
+            padding: 40px 0;
+            color: #999;
+            font-size: 16px;
+        }
+        .loading::after {
+            content: " …";
+            animation: dots 1.2s steps(3, end) infinite;
+        }
+        @keyframes dots {
+            0% {
+                content: " …";
+            }
+            33% {
+                content: " …";
+            }
+            66% {
+                content: " …";
+            }
+            100% {
+                content: "";
+            }
+        }
+
+        /* ========== 页脚 ========== */
+        .footer {
+            margin-top: 28px;
+            text-align: center;
+            font-size: 13px;
+            color: #bbb;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 18px;
+        }
+
+        /* ========== 工具类 ========== */
+        .hidden {
+            display: none !important;
+        }
+
+        /* 选中高亮 — 柔和 */
+        ::selection {
+            background: #dbeafe;
+            color: #000;
+        }
+        ::-moz-selection {
+            background: #dbeafe;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app" id="app">
+        <!-- ===== 头部 ===== -->
+        <header class="header">
+            <div class="brand">
+                📖 小说阅读器
+                <small>章回体</small>
+            </div>
+
+            <!-- 章节控制 -->
+            <div class="control-row">
+                <span class="control-label">章节</span>
+                <input class="control-input" id="chapterInput" type="number" min="1" max="999" inputmode="numeric" value="1" />
+                <button class="control-btn" id="readBtn">阅读</button>
+            </div>
+
+            <!-- 字体大小控制 -->
+            <div class="control-row">
+                <span class="control-label">字体大小</span>
+                <input class="control-input" id="fontSizeInput" type="number" min="12" max="36" inputmode="numeric" value="18" />
+                <span class="control-unit">px</span>
+                <button class="control-btn secondary" id="applyFontBtn">应用</button>
+            </div>
+        </header>
+
+        <!-- ===== 上方导航 ===== -->
+        <nav class="nav-bar top" id="navTop">
+            <button class="nav-btn" id="prevBtnTop" disabled>
+                <span class="arrow">←</span> 上一章
+            </button>
+            <span class="nav-spacer"></span>
+            <button class="nav-btn" id="nextBtnTop" disabled>
+                下一章 <span class="arrow">→</span>
+            </button>
+        </nav>
+
+        <!-- ===== 阅读区域 ===== -->
+        <main class="reading-area" id="readingArea">
+            <div class="message" id="message">
+                <span class="emoji">📚</span>
+                输入章节号，点击「阅读」开始
+            </div>
+            <div id="contentWrapper" class="hidden">
+                <h1 class="chapter-title" id="chapterTitle"></h1>
+                <div class="chapter-body" id="chapterBody"></div>
+            </div>
+        </main>
+
+        <!-- ===== 下方导航 ===== -->
+        <nav class="nav-bar bottom" id="navBottom">
+            <button class="nav-btn" id="prevBtnBottom" disabled>
+                <span class="arrow">←</span> 上一章
+            </button>
+            <span class="nav-spacer"></span>
+            <button class="nav-btn" id="nextBtnBottom" disabled>
+                下一章 <span class="arrow">→</span>
+            </button>
+        </nav>
+
+        <footer class="footer">
+            <span>纯静态 · 无服务器 · 数据仅存本地</span>
+        </footer>
+    </div>
+
+    <script>
+        /* ============================================================
+               JavaScript 逻辑
+               ============================================================ */
+
+        (function() {
+            'use strict';
+
+            // ---------- DOM 引用 ----------
+            const chapterInput = document.getElementById('chapterInput');
+            const readBtn = document.getElementById('readBtn');
+            const fontSizeInput = document.getElementById('fontSizeInput');
+            const applyFontBtn = document.getElementById('applyFontBtn');
+
+            const message = document.getElementById('message');
+            const contentWrapper = document.getElementById('contentWrapper');
+            const chapterTitle = document.getElementById('chapterTitle');
+            const chapterBody = document.getElementById('chapterBody');
+
+            const prevBtns = [
+                document.getElementById('prevBtnTop'),
+                document.getElementById('prevBtnBottom')
+            ];
+            const nextBtns = [
+                document.getElementById('nextBtnTop'),
+                document.getElementById('nextBtnBottom')
+            ];
+
+            // ---------- 状态 ----------
+            let currentChapter = 1; // 当前显示的章节号 (数字)
+            let currentFontSize = 18; // 当前字体大小 (px)
+            const BASE_PATH = 'content/';
+            const FILE_EXT = '.txt';
+            const DEFAULT_FONT_SIZE = 18;
+            const LINE_HEIGHT = 1.8;
+
+            // ---------- 工具函数 ----------
+            function padChapter(num) {
+                return String(num).padStart(3, '0');
+            }
+
+            function getFilePath(num) {
+                return BASE_PATH + 'chapter' + padChapter(num) + FILE_EXT;
+            }
+
+            // 判断是否为第一章
+            function isFirstChapter(num) {
+                return num <= 1;
+            }
+
+            // ---------- 显示消息 (隐藏正文) ----------
+            function showMessage(text, isError) {
+                message.classList.remove('hidden', 'error');
+                contentWrapper.classList.add('hidden');
+                message.textContent = text;
+                if (isError) {
+                    message.classList.add('error');
+                    // 加个 emoji
+                    message.innerHTML = '<span class="emoji">😅</span>' + text;
+                } else {
+                    message.innerHTML = text;
+                }
+                // 隐藏导航按钮 (因为没内容)
+                setNavButtons(false, false);
+            }
+
+            // ---------- 显示正文 ----------
+            function showContent(title, bodyText) {
+                message.classList.add('hidden');
+                contentWrapper.classList.remove('hidden');
+                chapterTitle.textContent = title || '无标题';
+                chapterBody.textContent = bodyText || '（正文为空）';
+                // 应用当前字体大小
+                applyFontSize(currentFontSize);
+            }
+
+            // ---------- 设置导航按钮状态 ----------
+            function setNavButtons(hasPrev, hasNext) {
+                const state = !hasPrev;
+                const stateNext = !hasNext;
+                prevBtns.forEach(btn => {
+                    btn.disabled = state;
+                    btn.style.visibility = state ? 'hidden' : 'visible';
+                    btn.style.opacity = state ? '0' : '1';
+                    btn.style.pointerEvents = state ? 'none' : 'auto';
+                });
+                nextBtns.forEach(btn => {
+                    btn.disabled = stateNext;
+                    btn.style.visibility = stateNext ? 'hidden' : 'visible';
+                    btn.style.opacity = stateNext ? '0' : '1';
+                    btn.style.pointerEvents = stateNext ? 'none' : 'auto';
+                });
+            }
+
+            // ---------- 应用字体大小 ----------
+            function applyFontSize(size) {
+                const val = parseInt(size, 10);
+                if (isNaN(val) || val < 10) return;
+                const clamped = Math.min(Math.max(val, 10), 48);
+                currentFontSize = clamped;
+                chapterBody.style.fontSize = clamped + 'px';
+                chapterBody.style.lineHeight = LINE_HEIGHT;
+                // 同步输入框
+                fontSizeInput.value = clamped;
+            }
+
+            // ---------- 加载章节 ----------
+            function loadChapter(num) {
+                // 参数校验
+                const chapterNum = parseInt(num, 10);
+                if (isNaN(chapterNum) || chapterNum < 1) {
+                    showMessage('请输入有效的章节号（正整数）', true);
+                    return;
+                }
+                if (chapterNum > 999) {
+                    showMessage('章节号不能超过 999', true);
+                    return;
+                }
+
+                const filePath = getFilePath(chapterNum);
+                const padded = padChapter(chapterNum);
+
+                // 更新输入框显示补零后的章节号
+                chapterInput.value = padded;
+
+                // 显示加载状态
+                showMessage('⏳ 正在加载第 ' + padded + ' 章…', false);
+
+                // 发起请求
+                fetch(filePath)
+                    .then(response => {
+                        if (!response.ok) {
+                            if (response.status === 404) {
+                                throw new Error('该章节尚未发布或不存在');
+                            }
+                            throw new Error('加载失败 (状态码: ' + response.status + ')');
+                        }
+                        return response.text();
+                    })
+                    .then(text => {
+                        // 解析：第一行为标题，其余为正文
+                        const lines = text.split(/\r?\n/);
+                        // 过滤掉首尾空行，但保留内容中的空行
+                        // 但第一行如果是空行，则标题为空
+                        let title = '';
+                        let bodyLines = [];
+                        if (lines.length > 0) {
+                            // 第一行作为标题，trim 掉首尾空白
+                            title = lines[0].trim() || '（无标题）';
+                            // 从第二行开始为正文
+                            bodyLines = lines.slice(1);
+                        } else {
+                            title = '（空文件）';
+                            bodyLines = [];
+                        }
+
+                        // 如果正文为空，但标题存在，显示空正文
+                        const bodyText = bodyLines.join('\n');
+
+                        // 更新状态
+                        currentChapter = chapterNum;
+
+                        // 显示正文
+                        showContent(title, bodyText);
+
+                        // 更新导航按钮
+                        const hasPrev = !isFirstChapter(chapterNum);
+                        // 下一章：尝试预加载 (轻量检测)
+                        checkNextChapter(chapterNum, function(hasNext) {
+                            setNavButtons(hasPrev, hasNext);
+                        });
+
+                        // 更新 URL hash (方便刷新)
+                        if (window.history && window.history.replaceState) {
+                            window.history.replaceState(null, '', '#chapter=' + padded);
+                        }
+                    })
+                    .catch(err => {
+                        console.warn('加载章节失败:', err.message);
+                        showMessage('❌ ' + err.message, true);
+                        // 隐藏导航
+                        setNavButtons(false, false);
+                    });
+            }
+
+            // ---------- 检测下一章是否存在 ----------
+            function checkNextChapter(num, callback) {
+                const nextNum = num + 1;
+                if (nextNum > 999) {
+                    callback(false);
+                    return;
+                }
+                const filePath = getFilePath(nextNum);
+                // 使用 HEAD 或 GET 轻量检测
+                fetch(filePath, { method: 'HEAD' })
+                    .then(res => {
+                        callback(res.ok);
+                    })
+                    .catch(() => {
+                        callback(false);
+                    });
+            }
+
+            // ---------- 切换到上一章 / 下一章 ----------
+            function goPrevChapter() {
+                if (isFirstChapter(currentChapter)) return;
+                loadChapter(currentChapter - 1);
+            }
+
+            function goNextChapter() {
+                // 先乐观加载，如果失败会提示
+                loadChapter(currentChapter + 1);
+            }
+
+            // ---------- 从 URL hash 恢复章节 ----------
+            function restoreFromHash() {
+                const hash = window.location.hash;
+                if (hash && hash.startsWith('#chapter=')) {
+                    const num = parseInt(hash.replace('#chapter=', ''), 10);
+                    if (!isNaN(num) && num > 0 && num <= 999) {
+                        chapterInput.value = padChapter(num);
+                        loadChapter(num);
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            // ---------- 初始化 ----------
+            function init() {
+                // 默认字体
+                applyFontSize(DEFAULT_FONT_SIZE);
+
+                // 如果 hash 有章节，加载，否则加载第一章
+                const restored = restoreFromHash();
+                if (!restored) {
+                    // 默认加载第一章
+                    chapterInput.value = '001';
+                    loadChapter(1);
+                }
+
+                // ---------- 事件绑定 ----------
+
+                // 阅读按钮
+                readBtn.addEventListener('click', function() {
+                    const val = parseInt(chapterInput.value, 10);
+                    if (isNaN(val) || val < 1) {
+                        showMessage('请输入有效的章节号', true);
+                        return;
+                    }
+                    loadChapter(val);
+                });
+
+                // 章节输入框按回车
+                chapterInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        readBtn.click();
+                    }
+                });
+
+                // 字体应用按钮
+                applyFontBtn.addEventListener('click', function() {
+                    const val = parseInt(fontSizeInput.value, 10);
+                    if (isNaN(val) || val < 10) {
+                        fontSizeInput.value = currentFontSize;
+                        return;
+                    }
+                    applyFontSize(val);
+                });
+
+                // 字体输入框按回车
+                fontSizeInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        applyFontBtn.click();
+                    }
+                });
+
+                // 字体输入框失焦自动应用
+                fontSizeInput.addEventListener('blur', function() {
+                    const val = parseInt(fontSizeInput.value, 10);
+                    if (!isNaN(val) && val >= 10) {
+                        applyFontSize(val);
+                    } else {
+                        fontSizeInput.value = currentFontSize;
+                    }
+                });
+
+                // 章节输入框失焦补零
+                chapterInput.addEventListener('blur', function() {
+                    const val = parseInt(chapterInput.value, 10);
+                    if (!isNaN(val) && val > 0 && val <= 999) {
+                        chapterInput.value = padChapter(val);
+                    } else if (val > 999) {
+                        chapterInput.value = '999';
+                    } else {
+                        // 保持原样，但不为空
+                        if (!chapterInput.value.trim()) {
+                            chapterInput.value = padChapter(currentChapter);
+                        }
+                    }
+                });
+
+                // 导航按钮事件 (上下两组共用逻辑)
+                prevBtns.forEach(btn => {
+                    btn.addEventListener('click', goPrevChapter);
+                });
+                nextBtns.forEach(btn => {
+                    btn.addEventListener('click', goNextChapter);
+                });
+
+                // 键盘快捷键 (左右键翻页)
+                document.addEventListener('keydown', function(e) {
+                    // 如果焦点在输入框中，不干扰
+                    const tag = e.target.tagName.toLowerCase();
+                    if (tag === 'input' || tag === 'textarea') return;
+
+                    if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                        e.preventDefault();
+                        const prevBtn = prevBtns[0];
+                        if (!prevBtn.disabled) {
+                            goPrevChapter();
+                        }
+                    } else if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+                        e.preventDefault();
+                        const nextBtn = nextBtns[0];
+                        if (!nextBtn.disabled) {
+                            goNextChapter();
+                        }
+                    }
+                });
+
+                console.log('📖 小说阅读器已启动');
+                console.log('💡 快捷键: ← / PageUp 上一章, → / PageDown 下一章');
+            }
+
+            // ---------- 页面加载完成后启动 ----------
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+
+        })();
+    </script>
+
+</body>
+</html>
